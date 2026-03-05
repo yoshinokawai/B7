@@ -9,12 +9,15 @@ import {
   SafeAreaView,
   StatusBar,
   FlatList,
+  AppState,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 const STORAGE_FILE = FileSystem.documentDirectory + 'saved_phone_numbers.json';
 
-const App = () => {
+const SignInScreen = React.memo(({ navigation }) => {
   // ---- State Management ----
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -22,6 +25,26 @@ const App = () => {
   const savedNumbersRef = useRef([]);                      // Ref always up-to-date
   const [suggestions, setSuggestions] = useState([]);      // Filtered suggestions
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [appStateVisible, setAppStateVisible] = useState(AppState.currentState);
+
+  // ---- Advanced useEffect Patterns ----
+  useEffect(() => {
+    Alert.alert(
+      'Welcome',
+      'Chào mừng đến với khoá học lập trình React Native tại CodeFresher.vn'
+    );
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      setAppStateVisible(nextAppState);
+      console.log('AppState', nextAppState);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // ---- Load saved numbers on mount (Persistence) ----
   useEffect(() => {
@@ -162,11 +185,13 @@ const App = () => {
 
     // Save to persistence first, then show success
     await savePhoneNumber(phoneNumber);
-    const savedNum = phoneNumber;
+
     // Clear input so user can retype and see suggestions
     setPhoneNumber('');
     setErrorMessage('');
-    Alert.alert('Thành công', `Số điện thoại: ${savedNum}`, [{ text: 'OK' }]);
+
+    // Navigate to Home upon valid phone entry
+    navigation.navigate('Home');
   };
 
   // ---- Render a single suggestion item ----
@@ -185,6 +210,12 @@ const App = () => {
 
       {/* ---- Header ---- */}
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.backButtonText}>{'<'}</Text>
+        </TouchableOpacity>
         <Text style={styles.headerText}>Đăng nhập</Text>
       </View>
 
@@ -232,7 +263,7 @@ const App = () => {
       </View>
     </SafeAreaView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -240,11 +271,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     backgroundColor: '#fff',
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 4,
+  },
+  backButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
   },
   headerText: {
     fontSize: 20,
@@ -320,4 +362,32 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
+const HomeScreen = () => {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Trang chủ (Home)</Text>
+      <Text style={{ fontSize: 16, marginTop: 10 }}>Đăng nhập thành công!</Text>
+    </View>
+  );
+};
+
+const Stack = createNativeStackNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="SignIn">
+        <Stack.Screen
+          name="SignIn"
+          component={SignInScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: 'Home', headerBackVisible: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
